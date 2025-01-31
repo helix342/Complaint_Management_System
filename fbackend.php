@@ -2,6 +2,7 @@
 header('Content-Type: application/json');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+session_start();
 
 include("db.php");
 
@@ -33,7 +34,10 @@ function getNextFileNumber($counterFilePath)
 // Handle form submission
 if (isset($_POST['faculty_id'])) {
     $faculty_id = mysqli_real_escape_string($conn, $_POST['faculty_id']);
+    $fac_id = mysqli_real_escape_string($conn,$_POST['cfaculty']);
+    $fac_id = preg_replace('/\D/', '', $fac_id); 
     $block_venue = mysqli_real_escape_string($conn, $_POST['block_venue']);
+    $bus_route = mysqli_real_escape_string($conn, $_POST['route']);
     $venue_name = mysqli_real_escape_string($conn, $_POST['venue_name']);
     $type_of_problem = mysqli_real_escape_string($conn, $_POST['type_of_problem']);
     $problem_description = mysqli_real_escape_string($conn, $_POST['problem_description']);
@@ -73,9 +77,12 @@ if (isset($_POST['faculty_id'])) {
     }
 
 
+
+
+
     // Insert data into the database
-    $query = "INSERT INTO complaints_detail (faculty_id, block_venue, venue_name, type_of_problem, problem_description, images, date_of_reg, status) 
-              VALUES ('$faculty_id', '$block_venue', '$venue_name', '$type_of_problem', '$problem_description', '$images', '$date_of_reg', '$status')";
+    $query = "INSERT INTO complaints_detail (faculty_id,fac_id,block_venue, venue_name, type_of_problem, problem_description, images, date_of_reg, status) 
+              VALUES ('$faculty_id','$fac_id', '$block_venue', '$venue_name', '$type_of_problem', '$problem_description', '$images', '$date_of_reg', '$status')";
 
     if (mysqli_query($conn, $query)) {
         echo json_encode(['status' => 200, 'message' => 'Success']);
@@ -236,14 +243,15 @@ if (isset($_POST['get_status_details'])) {
 }
 
 // Handle feedback form submission
-if (isset($_POST['id'])) {
+if (isset($_POST['get_feedback'])) {
+
     $id = $_POST['id'];
-    $satisfaction = $_POST['satisfaction']; // Get satisfaction (13 for Satisfied, 14 for Not Satisfied)
-    $feedback = $_POST['feedback'];
+    $feedback = $_POST['satisfaction_feedback']; // Combined feedback and satisfaction value
+    $rating = $_POST['ratings']; // Get rating
 
     // Validate inputs
-    if (empty($id) || empty($feedback) || empty($satisfaction)) {
-        echo json_encode(['status' => 400, 'message' => 'Problem ID, Feedback, or Satisfaction is missing']);
+    if (empty($id) || empty($feedback)) {
+        echo json_encode(['status' => 400, 'message' => 'Problem ID or Feedback is missing']);
         exit;
     }
 
@@ -263,14 +271,13 @@ if (isset($_POST['id'])) {
 
     $stmt->close();
 
-    // Update feedback if it exists, otherwise insert a new one
+    // Update feedback if it exists, and set status to 14
     if ($feedbackExists) {
-        // Update existing feedback and status
-        $query = "UPDATE complaints_detail SET feedback = ?, status = ? WHERE id = ?";
+        // Update existing feedback, rating, and set status to 14
+        $query = "UPDATE complaints_detail SET feedback = ?, rating = ?, status = 14 WHERE id = ?";
     } else {
-        // Insert new feedback (though, this case might not happen since the record should exist)
-        // You can adjust logic here if necessary, but we'll proceed with update as the case.
-        $query = "UPDATE complaints_detail SET feedback = ?, status = ? WHERE id = ?";
+        // Insert new feedback (same query logic as update), with status set to 14
+        $query = "UPDATE complaints_detail SET feedback = ?, rating = ?, status = 14 WHERE id = ?";
     }
 
     $stmt = $conn->prepare($query);
@@ -280,7 +287,8 @@ if (isset($_POST['id'])) {
         exit;
     }
 
-    $stmt->bind_param('sii', $feedback, $satisfaction, $id);
+    // Bind parameters including the combined feedback value, rating, and ID
+    $stmt->bind_param('sii', $feedback, $rating, $id);
 
     if ($stmt->execute()) {
         echo json_encode(['status' => 200, 'message' => 'Feedback updated successfully']);
@@ -292,5 +300,34 @@ if (isset($_POST['id'])) {
     $conn->close();
     exit;
 }
+
+
+
+$fac_id = $_SESSION['faculty_id'];
+
+
+
+
+if (isset($_POST['fac'])) {
+    $sql8 =  "SELECT * FROM faculty WHERE dept=(SELECT department FROM faculty_details WHERE faculty_id='$fac_id')";
+    $result8 = mysqli_query($conn, $sql8);
+
+    $options = '';
+    $options .= '<option value="">Select a Faculty</option>';
+
+
+
+    while ($row = mysqli_fetch_assoc($result8)) {
+        $options .= '<option value="' . $row['id'] . '">' . $row['id'] . ' - ' . $row['name'] . '</option>';
+
+    }
+
+
+    echo $options;
+    exit();  
+}
+
+
+
 
 ?>

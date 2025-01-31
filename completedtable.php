@@ -1,5 +1,7 @@
 <?php
 session_start(); // Ensure the session is started
+
+
 if (!isset($_SESSION['faculty_id'])) {
     // Redirect to login page if not logged in
     header("Location: flogin.php");
@@ -32,6 +34,11 @@ $row_count2 = mysqli_num_rows($result2);
 $row_count3 = mysqli_num_rows($result3);
 $row_count4 = mysqli_num_rows($result4);
 
+
+$facquery = "SELECT * FROM faculty WHERE dept=(SELECT department FROM faculty_details WHERE faculty_id='$faculty_id')";
+$resultfac = mysqli_query($conn, $facquery);
+
+
 ?>
 
 
@@ -48,7 +55,7 @@ $row_count4 = mysqli_num_rows($result4);
     <meta name="author" content="">
     <!-- Favicon icon -->
     <link rel="icon" type="image/png" sizes="16x16" href="assets/images/favicon.png">
-    <title>Faculty Login</title>
+    <title>MIC-MKCE</title>
     <!-- Custom CSS -->
     <link href="assets/libs/flot/css/float-chart.css" rel="stylesheet">
     <!-- Custom CSS -->
@@ -163,6 +170,20 @@ $row_count4 = mysqli_num_rows($result4);
 
         .spbutton:active {
             background-color: rgb(130, 0, 0);
+        }
+
+        /*star rating*/
+        .stars span {
+            font-size: 2rem;
+            cursor: pointer;
+            color: gray;
+            /* Default color for unlit stars */
+            transition: color 0.3s;
+        }
+
+        .stars span.highlighted {
+            color: gold;
+            /* Color for lit stars */
         }
     </style>
 </head>
@@ -282,7 +303,7 @@ $row_count4 = mysqli_num_rows($result4);
                                                 <span class="hidden-xs-down">
                                                     <i class="bi bi-people-fill"></i>
                                                     <i class="fas fa-exclamation"></i>
-                                                    <b>&nbsp Pending Work (<?php echo $row_count5; ?>)</b>
+                                                    <b>&nbsp Complaints (<?php echo $row_count5; ?>)</b>
                                                 </span>
                                             </div>
                                         </a>
@@ -420,63 +441,80 @@ $row_count4 = mysqli_num_rows($result4);
 
                                 <!------------------Pending Work Modal----------------->
                                 <div class="tab-pane p-20" id="home" role="tabpanel">
-                                    <div class="modal fade" id="cmodal" tabindex="-1"
-                                        aria-labelledby="exampleModalLabel" aria-hidden="true">
+                                    <div class="modal fade" id="cmodal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
                                         <div class="modal-dialog">
                                             <div class="modal-content">
                                                 <div class="modal-header" style="background:linear-gradient(to bottom right, #cc66ff 1%, #0033cc 100%);background-color:#7460ee;">
                                                     <h5 class="modal-title" id="exampleModalLabel">Raise Complaint</h5>
-                                                    <button class="spbutton" type="button" class="btn-close" data-bs-dismiss="modal"
-                                                        aria-label="Close">
+                                                    <button class="spbutton" type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                                 </div>
                                                 <div>
-                                                    <form id="addnewuser" enctype="multipart/form-data">
+                                                    <form id="addnewuser" enctype="multipart/form-data" onsubmit="handleSubmit(event)">
                                                         <div class="modal-body">
                                                             <div class="mb-3">
                                                                 <input type="hidden" id="hidden_faculty_id" value="<?php echo $_SESSION['faculty_id']; ?>">
                                                                 <input type="hidden" class="form-control" name="faculty_id" id="faculty_id" value="<?php echo $_SESSION['faculty_id']; ?>" readonly>
                                                             </div>
+                                                            <div class="form-group" style="margin-bottom: 15px;">
+                                                                <label for="faculty" class="font-weight-bold" style="display: block; margin-bottom: 5px;">Choose Faculty</label>
+                                                                <select class="form-control" name="cfaculty" id="cfaculty" style="width: 100%; height: 40px; border-radius: 4px; border: 1px solid #ccc;">
+                                                                </select>
+                                                            </div>
 
+                                                            <!-- Type of Problem -->
                                                             <div class="mb-3">
-                                                                <label for="block" class="form-label">Block</label>
+                                                                <label for="type_of_problem" class="form-label">Type of Problem <span style="color: red;">*</span></label>
+                                                                <select class="form-control" name="type_of_problem" onchange="checkifTransport()" style="width: 100%; height:36px;">
+                                                                    <option>Select</option>
+                                                                    <option value="elecrtical">ELECTRICAL</option>
+                                                                    <option value="civil">CIVIL</option>
+                                                                    <option value="itkm">IT INFRA</option>
+                                                                    <option value="transport">TRANSPORT</option>
+                                                                    <option value="house">HOUSE KEEPING</option>
+                                                                </select>
+                                                            </div>
+
+                                                            <!-- Block -->
+                                                            <div class="mb-3" id="blockInput">
+                                                                <label for="block" class="form-label">Block\Bus No:<span style="color: red;">*</span></label>
                                                                 <input type="text" class="form-control" name="block_venue" placeholder="Eg:RK-206" required>
                                                             </div>
-                                                            <div class="mb-3">
-                                                                <label for="venue" class="form-label">Venue</label>
-                                                                <select class="form-control" name="venue_name"
-                                                                    style="width: 100%; height:36px;">
+
+                                                            <!-- Venue -->
+                                                            <div class="mb-3" id="venueInput">
+                                                                <label for="venue" class="form-label">Venue <span style="color: red;">*</span></label>
+                                                                <select id="dropdown" class="form-control" name="venue_name" onchange="checkIfOthers()" style="width: 100%; height:36px;">
                                                                     <option>Select</option>
                                                                     <option value="class">Class Room</option>
                                                                     <option value="department">Department</option>
                                                                     <option value="lab">Lab</option>
                                                                     <option value="staff_room">Staff Room</option>
+                                                                    <option id="oth" value="Other">Others</option>
                                                                 </select>
                                                             </div>
-                                                            <div class="mb-3">
-                                                                <label for="type_of_problem" class="form-label">Type of Problem</label>
-                                                                <select class="form-control" name="type_of_problem" style="width: 100%; height:36px;">
-                                                                    <option>Select</option>
-                                                                    <option value="Electrical Work">ELECTRICAL</option>
-                                                                    <option value="Carpenter Work">CARPENTER</option>
-                                                                    <option value="Civil Work">CIVIL</option>
-                                                                    <option value="Partition Work">PARTITION</option>
-                                                                    <option value="IT Infra Work">IT INFRA </option>
-                                                                    <option value="Plumbing Work">PLUMBING </option>
-                                                                </select>
+
+                                                            <!-- Optional Other Venue -->
+                                                            <div id="othersInput" style="display: none;">
+                                                                <label class="form-label" for="otherValue">Please specify: <span style="color: red;">*</span></label>
+                                                                <input class="form-control" type="text" id="otherValue" name="otherValue"> <br>
                                                             </div>
+
+                                                            <!-- Problem Description -->
                                                             <div class="mb-3">
-                                                                <label for="description" class="form-label">Problem Description</label>
+                                                                <label for="description" class="form-label">Problem Description <span style="color: red;">*</span></label>
                                                                 <input type="text" class="form-control" name="problem_description" placeholder="Enter Description" required>
                                                             </div>
+
+                                                            <!-- Image -->
                                                             <div class="mb-3">
-                                                                <label for="images" class="form-label">Image</label>
-                                                                <input type="file" class="form-control" name="images" id="images" onchange="validateSize(this)">
+                                                                <label for="images" class="form-label">Image <span style="color: red;">*</span> </label>
+                                                                <input type="file" class="form-control" name="images" id="images" onchange="validateSize(this)" required>
                                                             </div>
                                                             <div class="mb-3">
                                                                 <input type="hidden" class="form-control" name="date_of_reg" id="date_of_reg" required>
                                                             </div>
                                                         </div>
-                                                        <input type="hidden" name="status" value="1">
+                                                        <input type="hidden" name="status" value="2">
                                                         <div class="modal-footer">
                                                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                                                             <button type="submit" class="btn btn-primary">Submit</button>
@@ -488,13 +526,14 @@ $row_count4 = mysqli_num_rows($result4);
                                     </div>
                                     <!--pending work modal end -->
 
+
                                     <!-- Pending table Start-->
                                     <div class="row">
                                         <div class="col-md-12">
                                             <div class="card">
                                                 <div class="card-body">
                                                     <div>
-                                                        <button type="button" class="btn btn-info float-right" data-bs-toggle="modal" data-bs-target="#cmodal">Raise Compliant</button>
+                                                        <button type="button" class="btn btn-info float-right fac" data-bs-toggle="modal" data-bs-target="#cmodal">Raise Compliant</button>
                                                         <br>
                                                         <br>
                                                     </div>
@@ -517,24 +556,39 @@ $row_count4 = mysqli_num_rows($result4);
                                                                 $s = 1;
                                                                 while ($row = mysqli_fetch_assoc($result5)) {
                                                                     $statusMessage = '';
+                                                                    $hodforward = '';
+                                                                    $principalforward = '';
+                                                                    $managerforward = '';
+                                                                    $forwardedtoprincipal = '';
+                                                                    $infraforward = '';
+                                                                    $sendtoworker = '';
                                                                     switch ($row['status']) {
-                                                                        case 1:
+                                                                        case 2:
                                                                             $statusMessage = 'Pending';
                                                                             break;
-                                                                        case 2:
-                                                                            $statusMessage = 'Approved by Infra';
-                                                                            break;
+
                                                                         case 4:
-                                                                            $statusMessage = 'Approved by HOD';
+                                                                            $infraforward = 'Approved by Infra';
+                                                                            $hodforward = 'Approved by HOD';
                                                                             break;
                                                                         case 6:
-                                                                            $statusMessage = 'Sent to Principal for Approval';
+                                                                            $infraforward = 'Approved by Infra';
+                                                                            $hodforward = 'Approved by HOD';
+                                                                            $managerforward = ' Approved by Manager';
+                                                                            $forwardedtoprincipal = 'Sent to Principal for Approval';
                                                                             break;
                                                                         case 8:
-                                                                            $statusMessage = 'Approved by Principal ';
+                                                                            $infraforward = 'Approved by Infra';
+                                                                            $hodforward = 'Approved by HOD';
+                                                                            $managerforward = ' Approved by Manager';
+                                                                            $forwardedtoprincipal = 'Sent to Principal for Approval';
+                                                                            $forwardedtoprincipal = 'Approved by Principal ';
                                                                             break;
                                                                         case 9:
-                                                                            $statusMessage = ' Approved by Manager';
+                                                                            $infraforward = 'Approved by Infra';
+                                                                            $hodforward = 'Approved by HOD';
+                                                                            $principalforward = ' Approved by Manager';
+                                                                            $sendtoworker = 'Worker send to worker';
                                                                             break;
                                                                         default:
                                                                             $statusMessage = 'Unknown Status';
@@ -553,15 +607,13 @@ $row_count4 = mysqli_num_rows($result4);
                                                                             </button>
                                                                         </td>
                                                                         <td class="text-center">
-                                                                            <?php if ($row['status'] == 1) { ?>
-                                                                                <center>
-                                                                                    <button class="btn btndelete btn-danger" type="button" value="<?php echo $row['id']; ?>">
-                                                                                        <i class="fas fa-times"></i>
-                                                                                    </button>
-                                                                                </center>
+                                                                            <?php if ($row['status'] == 11 || $row['status'] == 18) { ?>
+                                                                                <!-- Button to open the feedback modal -->
+                                                                                <button type="button" class="btn btn-info feedbackBtn" data-problem-id="<?php echo $row['id']; ?>" data-bs-toggle="modal" data-bs-target="#feedback_modal">Feedback</button>
                                                                             <?php } else { ?>
-                                                                                <span class="badge bg-success" style="font-size: 1.2em; color: #000; padding: 0.25em 0.5em;"><?php echo $statusMessage; ?></span>
+                                                                                <button type="button" disabled>Feedback</button>
                                                                             <?php } ?>
+                                                                                       
                                                                         </td>
                                                                     </tr>
                                                                 <?php
@@ -576,6 +628,37 @@ $row_count4 = mysqli_num_rows($result4);
                                         </div>
                                     </div>
                                 </div>
+                                <?php
+                                $s = 1;
+                                while ($row = mysqli_fetch_assoc($result5)) {
+                                    $statusMessage = '';
+                                    switch ($row['status']) {
+                                        case 1:
+                                            $statusMessage = 'Pending';
+                                            break;
+                                        case 2:
+                                            $statusMessage = 'Approved by Infra';
+                                            break;
+                                        case 4:
+                                            $statusMessage = 'Approved by HOD';
+                                            break;
+                                        case 6:
+                                            $statusMessage = 'Sent to Principal for Approval';
+                                            break;
+                                        case 8:
+                                            $statusMessage = 'Approved by Principal ';
+                                            break;
+                                        case 9:
+                                            $statusMessage = ' Approved by Manager';
+                                            break;
+                                        default:
+                                            $statusMessage = 'Unknown Status';
+                                    }
+                                }
+                                ?>
+
+
+
                                 <!------------------Complain form Page Ends----------------->
 
 
@@ -610,9 +693,9 @@ $row_count4 = mysqli_num_rows($result4);
                                                             <th class="text-center"><b>S.No</b></th>
                                                             <th class="text-center"><b>Problem_idb></th>
                                                             <th class="text-center"><b>Venue</b></th>
-                                                            <th class="text-center"><b>Problem</b></th>
                                                             <th class="text-center"><b>Problem description</b></th>
                                                             <th class="text-center"><b>Date Of submission</b></th>
+                                                            <th class="text-center"><b>Deadline</b></th>
                                                             <th class="text-center"><b>Worker Details</b></th>
                                                             <th class="text-center"><b>Feedback</b></th>
                                                         </tr>
@@ -626,17 +709,36 @@ $row_count4 = mysqli_num_rows($result4);
                                                                 <td class="text-center"><?php echo $s; ?></td>
                                                                 <td class="text-center"><?php echo $row['id']; ?></td>
                                                                 <td class="text-center"><?php echo $row['block_venue']; ?></td>
-                                                                <td class="text-center"><?php echo $row['type_of_problem']; ?></td>
                                                                 <td class="text-center"><?php echo $row['problem_description']; ?></td>
                                                                 <td class="text-center"><?php echo $row['date_of_reg']; ?></td>
+                                                                <td class="text-center">
+                                                                    <?php if ($row['extend_date'] == 1) { ?>
+                                                                        <button type="button" class="btn btn-danger extenddeadline"
+                                                                            id="extendbutton" value="<?php echo $row['id']; ?>"
+                                                                            data-toggle="modal"
+                                                                            data-target="#extendModal"
+                                                                            data-reason="<?php echo $row['extend_reason']; ?>">
+                                                                            <?php echo $row['days_to_complete']; ?>
+                                                                        </button>
+                                                                    <?php } else { ?>
+                                                                        <?php echo $row['days_to_complete']; ?>
+                                                                    <?php } ?>
+                                                                </td>
+
+
                                                                 <td class="text-center">
                                                                     <button type="button" class="btn btn-light showWorkerDetails" value="<?php echo $row['id']; ?>">
                                                                         <?php
                                                                         $prblm_id = $row['id'];
-                                                                        $querry = "SELECT worker_first_name FROM worker_details WHERE worker_id = ( SELECT worker_id FROM manager WHERE problem_id = '$prblm_id')";
+                                                                        $querry = "SELECT worker_first_name FROM worker_details WHERE worker_id = ( SELECT worker_dept FROM manager WHERE problem_id = '$prblm_id')";
                                                                         $querry_run = mysqli_query($conn, $querry);
                                                                         $worker_name = mysqli_fetch_array($querry_run);
-                                                                        echo $worker_name['worker_first_name']; ?>
+                                                                        if ($worker_name['worker_first_name'] != null) {
+                                                                            echo $worker_name['worker_first_name'];
+                                                                        } else {
+                                                                            echo "NA";
+                                                                        }
+                                                                        ?>
                                                                     </button>
                                                                 </td>
                                                                 <td class="text-center">
@@ -658,6 +760,42 @@ $row_count4 = mysqli_num_rows($result4);
                                         </div>
                                     </div>
                                 </div>
+
+
+                                <!-- Extend Modal -->
+                                <div class="modal fade" id="extendModal" tabindex="-1" role="dialog"
+                                    aria-labelledby="extendModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="extendModalLabel">Reject Complaint</h5>
+                                                <button type="button" class="close" data-dismiss="modal"
+                                                    aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <form id="rejectForm">
+                                                    <input type="hidden" name="id" id="complaint_id99">
+                                                    <div class="form-group">
+                                                        <label for="rejectReason" class="form-label">Reason for
+                                                            Deadline Extension:</label> <br>
+                                                        <br>
+                                                        <textarea id="extendReasonTextarea" readonly style="width: 100%; height: 80px; font-size: 14px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background-color: #f9f9f9; color: #333; resize: none; overflow-y: auto;"></textarea>
+
+
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary"
+                                                            data-dismiss="modal">Close</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+
                                 <!------------------Work in Progress Table Ends----------------->
 
 
@@ -697,10 +835,20 @@ $row_count4 = mysqli_num_rows($result4);
                                                         <label for="satisfaction" class="form-label">Satisfaction</label>
                                                         <select name="satisfaction" id="satisfaction" class="form-control" required>
                                                             <option value="" disabled selected>Select an option</option>
-                                                            <option value="14">Satisfied</option>
-                                                            <option value="14">Reassign</option>
+                                                            <option value="Satisfied">Satisfied</option>
+                                                            <option value="Not Satisfied">Reassign</option>
                                                         </select>
                                                     </div>
+                                                    <div class="stars" id="star-rating">
+                                                        <h5>Give Rating:</h5>
+                                                        <span data-value="1">&#9733;</span>
+                                                        <span data-value="2">&#9733;</span>
+                                                        <span data-value="3">&#9733;</span>
+                                                        <span data-value="4">&#9733;</span>
+                                                        <span data-value="5">&#9733;</span>
+                                                    </div>
+                                                    <p id="rating-value">Rating: <span id="ratevalue">0</span></p>
+
                                                     <div class="mb-3">
                                                         <label for="feedback" class="form-label">Feedback</label>
                                                         <textarea name="feedback" id="feedback" class="form-control" placeholder="Enter Feedback" style="width: 100%; height: 150px;"></textarea>
@@ -926,6 +1074,23 @@ $row_count4 = mysqli_num_rows($result4);
         dateInput.value = today;
     </script>
 
+    <script>
+
+               function checkIfOthers() {
+            var dropdown = document.getElementById('dropdown');
+            var othersInput = document.getElementById('othersInput');
+            if (dropdown.value === 'Other') {
+                othersInput.style.display = 'block';
+            } else {
+                othersInput.style.display = 'none';
+            }
+        }
+
+        // Initialize state on DOM load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkifTransport();
+        });
+    </script>
 
     <!--file size and type -->
     <script>
@@ -1052,7 +1217,7 @@ $row_count4 = mysqli_num_rows($result4);
                 type: "POST",
                 url: "fbackend.php",
                 data: {
-                    'get_image': true,
+                    'getimagefac': true,
                     'id': id // Correct POST key
                 },
                 dataType: "json", // Automatically parses JSON responses
@@ -1118,12 +1283,27 @@ $row_count4 = mysqli_num_rows($result4);
         // Handle feedback form submission
         $('#add_feedback').on('submit', function(e) {
             e.preventDefault(); // Prevent default form submission
-            var formData = $(this).serialize(); // Serialize form data
+            var formData = new FormData(this);
+            formData.append("get_feedback", true);
+
+            // Get the values of satisfaction and feedback
+            var satisfactionValue = $('#satisfaction').val();
+            var feedbackValue = $('#feedback').val();
+
+            // Combine satisfaction and feedback into a single value
+            var combinedFeedback = satisfactionValue + ": " + feedbackValue;
+            formData.append("satisfaction_feedback", combinedFeedback);
+
+            var store_rating = $(document).data("ratings");
+            console.log(store_rating);
+
+            formData.append("ratings", store_rating);
             $.ajax({
                 type: "POST",
                 url: "fbackend.php", // Adjust if necessary
                 data: formData,
-                dataType: "json",
+                processData: false,
+                contentType: false,
                 success: function(response) {
                     if (response.status == 200) {
                         swal("Done!", "Feedback Submitted!", "success");
@@ -1157,6 +1337,90 @@ $row_count4 = mysqli_num_rows($result4);
                     alert('An error occurred while submitting feedback: ' + error);
                 }
             });
+        });
+
+        function checkIfOthers() {
+            const dropdown = document.getElementById('dropdown');
+            const othersInput = document.getElementById('othersInput');
+
+            // Show the input field if "Others" is selected
+            if (dropdown.value === 'Other') {
+                othersInput.style.display = 'block';
+            } else {
+                othersInput.style.display = 'none';
+            }
+        }
+
+        function handleSubmit(event) {
+            event.preventDefault(); // Prevent form submission for demo purposes
+            const dropdown = document.getElementById('dropdown');
+            const selectedValue = dropdown.value;
+            let finalValue;
+
+            // Get the appropriate value based on the dropdown selection
+            if (selectedValue === 'Other') {
+                finalValue = document.getElementById('otherValue').value;
+            } else {
+                finalValue = selectedValue;
+            }
+
+            console.log("Selected Category:", finalValue);
+            // You can then send this data to the backend or process it further
+            $("#oth").val(finalValue);
+        }
+    </script>
+
+    <script>
+        //Star Rating Coding
+        const stars = document.querySelectorAll("#star-rating span");
+        const ratingValue = document.getElementById("rating-value");
+        const ratevalue = document.getElementById("ratevalue");
+
+
+
+        stars.forEach((star, index) => {
+            star.addEventListener("click", () => {
+                // Remove the "highlighted" class from all stars hidhlited is used in Style
+                stars.forEach(s => s.classList.remove("highlighted"));
+
+                // Add the "highlighted" class to all stars up to the clicked one
+                for (let i = 0; i <= index; i++) {
+                    stars[i].classList.add("highlighted");
+                }
+
+                // Update the rating value
+                ratingValue.textContent = `Rating: ${index + 1}`;
+                ratevalue.textContent = `${index + 1}`;
+                var rating = ratevalue.textContent;
+                $(document).data("ratings", rating);
+            });
+        });
+
+
+        $(document).on('click', '.fac', function(e) {
+            e.preventDefault();
+            console.log("hiii");
+
+            $.ajax({
+                url: "login_backend.php",
+                type: "POST",
+                data: {
+                    "fac": true,
+                },
+                success: function(response) {
+                    console.log(response);
+                    $('#cfaculty').html(response);
+                }
+            });
+        });
+
+
+        $(document).on('click', '.extenddeadline', function() {
+            // Get the reason from the button's data attribute
+            var reason = $(this).data('reason');
+
+            // Set the reason in the modal's textarea
+            $('#extendReasonTextarea').val(reason);
         });
     </script>
 </body>

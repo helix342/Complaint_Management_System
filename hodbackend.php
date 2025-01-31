@@ -25,30 +25,6 @@ if (isset($_POST['approvebtn'])) {
         echo json_encode($res);
     }
 }
-
-//Approve All Button
-if (isset($_POST['approveallbtn'])) {
-    try {        
-        $query = "UPDATE complaints_detail SET status = '4' WHERE status='2' ";
-
-        if (mysqli_query($conn, $query)) {
-            $res = [
-                'status' => 200,
-                'message' => 'Details Updated Successfully'
-            ];
-            echo json_encode($res);
-        } else {
-            throw new Exception('Query Failed: ' . mysqli_error($conn));
-        }
-    } catch (Exception $e) {
-        $res = [
-            'status' => 500,
-            'message' => 'Error: ' . $e->getMessage()
-        ];
-        echo json_encode($res);
-    }
-}
-
 //Rejected Feedback
 if (isset($_POST['rejfeed'])) {
     try {
@@ -103,16 +79,21 @@ if (isset($_POST['seedetails'])) {
 //Faculty Details
 if (isset($_POST['facultydetails'])) {
     $student_id1 = mysqli_real_escape_string($conn, $_POST['user_id']);
-    $query = "SELECT cd.*, faculty.faculty_name, faculty.department, faculty.faculty_contact, faculty.faculty_mail
+    $fac_id = $_POST['fac_id'];
+    $query1 = "SELECT * FROM faculty WHERE id='$fac_id'";
+    $query = "SELECT cd.*, faculty_details.faculty_name, faculty_details.department, faculty_details.faculty_contact, faculty_details.faculty_mail
 FROM complaints_detail cd
-JOIN faculty ON cd.faculty_id = faculty.faculty_id WHERE cd.id='$student_id1'";
+JOIN faculty_details ON cd.faculty_id = faculty_details.faculty_id WHERE cd.id='$student_id1'";
     $query_run = mysqli_query($conn, $query);
+    $query_run1 = mysqli_query($conn,$query1);
     $User_data = mysqli_fetch_array($query_run);
+    $fac_data = mysqli_fetch_array($query_run1);
     if ($query_run) {
         $res = [
             'status' => 200,
             'message' => 'details Fetch Successfully by id',
-            'data' => $User_data
+            'data' => $User_data,
+            'data1'=>$fac_data
         ];
         echo json_encode($res);
         return;
@@ -149,58 +130,6 @@ if (isset($_POST['seefeedback'])) {
         ];
         echo json_encode($res);
         return;
-    }
-}
-
-//Rejected Feedback for Faculty Infra
-if (isset($_POST['rejfeedfac'])) {
-    try {
-        $id = mysqli_real_escape_string($conn, $_POST['reject_idfac']);
-        $feedback = mysqli_real_escape_string($conn, $_POST['rejfeedfac']);
-
-        $query = "UPDATE complaints_detail SET feedback = '$feedback', status = '3' WHERE id = '$id'";
-
-        if (mysqli_query($conn, $query)) {
-            $res = [
-                'status' => 200,
-                'message' => 'Details Updated Successfully'
-            ];
-            echo json_encode($res);
-        } else {
-            throw new Exception('Query Failed: ' . mysqli_error($conn));
-            echo "print";
-        }
-    } catch (Exception $e) {
-        $res = [
-            'status' => 500,
-            'message' => 'Error: ' . $e->getMessage()
-        ];
-        echo json_encode($res);
-    }
-}
-
-//Approve Button for Faculty Infra
-if (isset($_POST['approvefacbtn'])) {
-    try {
-        $id = mysqli_real_escape_string($conn, $_POST['approvefac']);
-        
-        $query = "UPDATE complaints_detail SET status = '2' WHERE id='$id'";
-        
-        if (mysqli_query($conn, $query))    {
-            $res = [
-                'status' => 200,
-                'message' => 'Details Updated Successfully'
-            ];
-            echo json_encode($res);
-        } else {
-            throw new Exception('Query Failed: ' . mysqli_error($conn));
-        }
-    } catch (Exception $e) {
-        $res = [
-            'status' => 500,
-            'message' => 'Error: ' . $e->getMessage()
-        ];
-        echo json_encode($res);
     }
 }
 
